@@ -1,0 +1,121 @@
+version: '3.6'
+services:
+
+  portainer:
+    container_name: portainer
+    image: portainer/portainer
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./volumes/portainer/data:/data
+
+  nodered:
+    container_name: nodered
+    build: ./services/nodered/.
+    restart: unless-stopped
+    user: "0"
+    privileged: true
+    env_file: ./services/nodered/nodered.env
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./volumes/nodered/data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+    devices:
+      - "/dev/ttyAMA0:/dev/ttyAMA0"
+      - "/dev/vcio:/dev/vcio"
+      - "/dev/gpiomem:/dev/gpiomem"
+
+  influxdb:
+    container_name: influxdb
+    image: "influxdb:latest"
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+      - "8083:8083"
+      - "2003:2003"
+    env_file:
+      - ./services/influxdb/influxdb.env
+    volumes:
+      - ./volumes/influxdb/data:/var/lib/influxdb
+      - ./backups/influxdb/db:/var/lib/influxdb/backup
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana
+    restart: unless-stopped
+    user: "0"
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./services/grafana/grafana.env
+    volumes:
+      - ./volumes/grafana/data:/var/lib/grafana
+      - ./volumes/grafana/log:/var/log/grafana
+
+  mosquitto:
+    container_name: mosquitto
+    image: eclipse-mosquitto
+    restart: unless-stopped
+    user: "1883"
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./volumes/mosquitto/data:/mosquitto/data
+      - ./volumes/mosquitto/log:/mosquitto/log
+      - ./volumes/mosquitto/pwfile:/mosquitto/pwfile
+      - ./services/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./services/mosquitto/filter.acl:/mosquitto/config/filter.acl
+
+  mariadb:
+    image: linuxserver/mariadb
+    container_name: mariadb
+    env_file:
+      - ./services/mariadb/mariadb.env
+    volumes:
+      - ./volumes/mariadb/config:/config
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
+
+  zigbee2mqtt:
+    container_name: zigbee2mqtt
+    image: koenkk/zigbee2mqtt
+    volumes:
+      - ./volumes/zigbee2mqtt/data:/app/data
+    devices:
+      - /dev/ttyAMA0:/dev/ttyACM0
+      #- /dev/ttyACM0:/dev/ttyACM0
+    restart: unless-stopped
+    network_mode: host
+
+  rtl_433:
+    container_name: rtl_433
+    build: ./services/rtl_433/.
+    env_file:
+      - ./services/rtl_433/rtl_433.env
+    devices:
+      - /dev/bus/usb
+    restart: unless-stopped
+
+  homebridge:
+    container_name: homebridge
+    image: oznu/homebridge:no-avahi-arm32v6
+    restart: unless-stopped
+    network_mode: host
+    env_file: ./services/homebridge/homebridge.env
+    volumes:
+      - ./volumes/homebridge:/homebridge
+
+  yacy:
+    container_name: yacy
+    image: yacy/yacy_search_server:armv7-latest
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+      - "8443:8443"
+    volumes:
+      - ./volumes/yacy:/opt/yacy_search/DATA
